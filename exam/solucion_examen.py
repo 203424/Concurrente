@@ -47,7 +47,7 @@ class Persona(threading.Thread):
 def main():
     personas = []
 
-    for i in range(PERSONAS):
+    for _ in range(PERSONAS):
         personas.append(Persona())
 
     for p in personas:
