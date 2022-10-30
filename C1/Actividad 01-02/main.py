@@ -14,34 +14,41 @@ q = list()
 
 def mostrar_items():
     #Operador ternario: condition_if_true if condition else condition_if_false
-    print("Items en bodega: ", q) if len(q)>0 else print("Bodega vacía")
+    print(f"Items en bodega: {q}") if len(q)>0 and len(q)<=ITEMS else print("\nBodega vacía\nNo se puede consumir items")
+    if len(q) == ITEMS:
+        print(f"BODEGA LLENA Items en bodega {q}")
 
 class Producer(threading.Thread):
     def __init__(self,id):
         threading.Thread.__init__(self)
         self.id = id
+    def producir(self):
+        item = random.randint(1,100) #Se crea un item con un identificador aleatorio
+        print(f"El PRODUCER {self.id} produjo {item} items")
+        q.append(item)
     def run(self):
         while True:
-            item = random.randint(0,100) #Se crea un item con un identificador aleatorio
-            restantes.acquire() 
             buffer.acquire()
+            restantes.acquire() 
             mostrar_items()
-            print(f"El PRODUCER {self.id} produjo el item {item}")
-            q.append(item)
             buffer.release()
             consumir.release()
             time.sleep(5)
+
 class Consumer(threading.Thread):
     def __init__(self,id):
         threading.Thread.__init__(self)
         self.id = id
+    def consumir(self):
+        pos = random.randint(0,len(q)-1)
+        item = q.pop(pos)
+        print(f"El CONSUMER {self.id} consumio {item} items")
     def run(self):
         while True:
-            consumir.acquire() 
+            consumir.acquire()
             buffer.acquire()
-            item = q.pop()
             mostrar_items()
-            print(f"El CONSUMER {self.id} consumio el item {item}")
+            consumir()
             buffer.release()
             restantes.release()
             time.sleep(5)
