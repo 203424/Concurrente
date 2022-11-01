@@ -1,3 +1,10 @@
+""" 
+INTEGRANTES:
+    Marisol Solís López - 203411
+    Enrique Verdi Cruz - 203433
+    Gabriel Ramón Cupil - 203424
+"""
+#NOTA de preferencia ejecutarlo en el prompt para visualizar los colores correctamente
 import threading, time, queue, math
 from random import choice, randint
 from termcolor import colored
@@ -10,14 +17,15 @@ RESERVACION_MAX = round(CAPACIDAD * 0.2)
 
 class Monitor(object):
     def __init__(self,espacio):
-        self.espacio = espacio #capacidad del restaurante
+        #capacidad del restaurante
+        self.espacio = espacio 
         self.mutex = threading.Lock()
         self.recepcion = threading.Condition()
         self.clientes = threading.Condition()
         self.mesero = threading.Condition()
         self.cocinero = threading.Condition()
         self.reservaciones = queue.Queue(RESERVACION_MAX)
-        self.num_clientes = queue.Queue(self.espacio) #numero de clientes dentro del restaurante
+        self.num_clientes = queue.Queue(self.espacio)
         self.ordenes = queue.Queue()
         self.ordenes_plato = queue.Queue()
         self.comida = queue.Queue()
@@ -38,7 +46,7 @@ class Monitor(object):
 
     def encolar(self,comensal):
         self.recepcion.acquire()
-        print(colored(f"Comensal {comensal.id} se formó en la cola","white","on_blue"))#py "C2\Actividad 05-02.py" 
+        print(colored(f"Comensal {comensal.id} se formó en la cola","white","on_blue"))
         time.sleep(1)
         self.mutex.acquire()
         self.entrar(comensal)
