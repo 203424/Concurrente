@@ -9,8 +9,8 @@ import threading, time, queue, math
 from random import choice, randint
 from termcolor import colored
 
-CAPACIDAD = 5
-COMENSALES = 10
+CAPACIDAD = 10
+COMENSALES = 20
 MESEROS = math.ceil(CAPACIDAD * 0.1) if CAPACIDAD <= 5 else round(CAPACIDAD * 0.1) #Esto es para que la cantidad de meseros siempre sea almenos 1
 COCINEROS = MESEROS #Hay 10% de la capacidad y 10% de la capacidad, por lo tanto hay igual cantidad de cocineros que de meseros
 RESERVACION_MAX = round(CAPACIDAD * 0.2)
@@ -69,7 +69,7 @@ class Monitor(object):
             self.clientes.release()
     
     def comer(self):
-        if not self.comida.empty():
+        while not self.comida.empty():
             comensal = self.comida.get()
             comensal_id = list(comensal.keys())[0]
             comensal_plato = list(comensal.values())[0]
