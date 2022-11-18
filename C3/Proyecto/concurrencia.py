@@ -1,12 +1,9 @@
-import threading
+from threading import Thread,Lock, Condition, Semaphore 
 import time
 from random import choice, randint
 
 class Monitor():
     def __init__(self):
-        self.mutex = threading.Lock()
-        self.cpu = threading.Condition()
-        self.player = threading.Condition()
         #variables de juego
         self.hp_player = 50
         self.hp_cpu = 50
@@ -16,7 +13,7 @@ class Monitor():
         self.tropas_desplegadas_player = []
         self.tropas_cpu = []
         self.tropas_desplegadas_cpu = []
-        
+
     def ganar_monedas(self):
         if self.monedas_player < 50:
             if self.monedas_player+2 > 50:
@@ -34,11 +31,16 @@ class Monitor():
     def gastar_monedas(self,tropa,clave):
         if clave == 0 and self.monedas_cpu-tropa["cost"] >= 0:
             self.monedas_cpu -= tropa["cost"]
-            self.tropas_cpu.append(tropa)
-            print(self.tropas_cpu)
+            if len(self.tropas_desplegadas_cpu) < 9:
+                self.tropas_desplegadas_cpu.append(tropa)
+            else:
+                self.tropas_cpu.append(tropa)
         elif clave == 1 and self.monedas_player-tropa["cost"] >= 0:
             self.monedas_player -= tropa["cost"]
-            self.tropas_player.append(tropa)
+            if len(self.tropas_desplegadas_player) < 9:
+                self.tropas_desplegadas_player.append(tropa)
+            else:
+                self.tropas_player.append(tropa)
         else:
             print("Dinero suficiente")
 
@@ -56,19 +58,18 @@ class Tropa():
         tropa = choice(tropas)
         return tropa
 
-class Game(threading.Thread):
+class Game(Thread):
     def __init__(self, monitor):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         self.monitor = monitor
-    
+
     def run(self):
         while self.monitor.hp_player >= 1 and self.monitor.hp_cpu >= 1:
-            # print("Jugador: ",self.monitor.monedas_player)
             self.monitor.ganar_monedas()
 
-class Player(threading.Thread):
+class Player(Thread):
     def __init__(self,monitor,automatico):
-        threading.Thread.__init__(self)
+        Thread.__init__(self)
         self.puntos = 0
         self.monitor = monitor
         self.automatico = automatico
@@ -77,6 +78,7 @@ class Player(threading.Thread):
         opt = 0
         if clave == 0:
             self.monitor.gastar_monedas(Tropa().random_trop(),clave)
+            time.sleep(randint(1,5))
         while (opt<1 or opt>5) and clave==1:
             opt = input("[1]Guerrero\t[2]Asesino\t[3]Paladín\t[4]Dragon\n")
             if opt != "" and opt.isdigit():
@@ -93,6 +95,7 @@ class Player(threading.Thread):
                     print("ignorar")
             else:
                 opt = 0
+
     def run(self):
         self.monitor.ganar_monedas()
         if self.automatico:
