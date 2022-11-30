@@ -5,9 +5,11 @@ pygame.init()
 BG = (201,194,190)
 BLACK = (51,48,33)
 WHITE = (255,255,255)
+BLUE = (50,131,172)
+RED = (172,50,50)
 W = 1280
 H = 720
-fps = 16
+fps = 8
 # fps = 64
 screen = pygame.display.set_mode((W,H))
 pygame.display.set_caption("Tower Defense")
@@ -151,6 +153,8 @@ class Troop(object):
         self.hp = self.hp_base
         self.damage_taken = 0
         self.hitbox = (self.x+12,self.y+30,32,34)
+        self.is_attack = False
+        self.is_death = False
     
     def draw(self):
         if self.team == "red":
@@ -160,13 +164,13 @@ class Troop(object):
                 pygame.draw.rect(screen,WHITE,(self.x+38,self.y+11,int((self.hp * 58)/self.hp_base),8)) #Barra de vida, salud
                 #visualizar hitbox
                 self.hitbox = (self.x,self.y+30,120,70)
-                pygame.draw.rect(screen,(255,0,0), self.hitbox,2)
+                # pygame.draw.rect(screen,(255,0,0), self.hitbox,2)
             else:
                 pygame.draw.rect(screen,BLACK,(self.x+4,self.y+10,48,10)) #Barra de vida, vacía
                 pygame.draw.rect(screen,WHITE,(self.x+5,self.y+11,int((self.hp * 46)/self.hp_base),8)) #Barra de vida, salud
                 #visualizar la hitbox
                 self.hitbox = (self.x,self.y+30,58,34)
-                pygame.draw.rect(screen,(255,0,0), self.hitbox,2)
+                # pygame.draw.rect(screen,(255,0,0), self.hitbox,2)
         else:
             #visualizar barra de vida
             if self.type == "dragon":
@@ -174,16 +178,17 @@ class Troop(object):
                 pygame.draw.rect(screen,WHITE,(self.x+36,self.y+11,int((self.hp * 58)/self.hp_base),8)) #Barra de vida, salud
                 #visualizar hitbox
                 self.hitbox = (self.x+6,self.y+30,120,70)
-                pygame.draw.rect(screen,(0,255,0), self.hitbox,2)
+                # pygame.draw.rect(screen,(0,255,0), self.hitbox,2)
             else:
                 pygame.draw.rect(screen,BLACK,(self.x+15,self.y+10,48,10)) #Barra de vida, vacía
                 pygame.draw.rect(screen,WHITE,(self.x+16,self.y+11,int((self.hp * 46)/self.hp_base),8)) #Barra de vida, salud
                 #visualizar hitbox
                 self.hitbox = (self.x+6,self.y+30,58,34)
-                pygame.draw.rect(screen,(0,255,0), self.hitbox,2)
+                # pygame.draw.rect(screen,(0,255,0), self.hitbox,2)
         screen.blit(pygame.transform.flip(self.image,self.team == "blue",False),(self.x,self.y))
 
     def move(self):
+        self.anim(self.walk_images)
         if self.team == "red":
             self.x -= self.speed
         else:
@@ -193,8 +198,8 @@ class Troop(object):
         self.index += 1
         if self.index > len(images)-1:
             self.index = 0
-
         self.image = images[self.index]
+        self.draw()
     
     def colision(self,any_object):
         #Lados de la hitbox de nuestro objeto
@@ -210,18 +215,31 @@ class Troop(object):
 
         return r1_right > r2_left and r1_left < r2_right and r1_up < r2_down and r1_down > r2_up
     
+    def idle(self):
+        if self.type == "dragon":
+            self.anim(self.idle_images)
+        else:
+            self.anim(self.walk_images)
+    
     def attack(self):
-        self.hp -= self.damage_taken
+        self.anim(self.attack_images)
+        if self.index == len(self.attack_images)-1:
+            self.hp -= self.damage_taken
+    
+    def death(self):
+        self.anim(self.death_images)
+        if self.index == len(self.death_images)-1:
+            return True
 
 red_team = []
 blue_team = []
 
 class Player():
-    def __init__(self,auto,team,monedas):
+    def __init__(self,auto,team,monedas, castle_hp):
         self.automatico = auto
         self.color = team
         self.monedas = monedas
-        self.castle_hp = 50
+        self.castle_hp = castle_hp
         if self.color == "red":
             self.controles = [pygame.K_u, pygame.K_i, pygame.K_o, pygame.K_p]
         else:
@@ -250,14 +268,14 @@ class Player():
                     if self.color == "red":
                         if len(red_team) < 9:
                             red_team.append(troop)
-                        elif len(blue_team) < 9:
-                            blue_team.append(troop)
+                    elif len(blue_team) < 9:
+                        blue_team.append(troop)
 
 def calc_damage(any_red, any_blue): 
     #jerarquia de daño
     types = ["archer","lancer","knight","archer"] # archer -> lancer -> knight -> archer
     damage = (any_blue.damage,any_red.damage)
-    print(any_blue.type,any_blue.team,"-",any_red.type,any_red.team)
+    # print(any_blue.type,any_blue.team,"-",any_red.type,any_red.team)
     if any_red.type != "dragon" and any_blue.type != "dragon" :
         if types.index(any_red.type)+1 == types.index(any_blue.type):
             damage = (any_blue.damage,any_red.damage * 2) #si red counter blue, entonces red.damage*2
@@ -284,108 +302,140 @@ def show_stats_player():
     screen.blit(txt_hp_castle_r,(980,50))
     screen.blit(txt_hp_castle_b,(270,50))
 
+def troop_controller(troops):
+    for troop in troops:
+        if troop.is_death:
+            if troop.death():
+                if troop.team == "red":
+                    player.monedas += troop.drop
+                else:
+                    player2.monedas += troop.drop
+                troops.remove(troop)
+        else:
+            if troop.speed != 0:
+                troop.move()
+            elif troop.is_attack:
+                troop.attack()
+            else:
+                troop.idle()
+            if len(troops)>1 and troops.index(troop)+1 < len(troops):
+                if troop.colision(troops[troops.index(troop)+1]):
+                    troops[troops.index(troop)+1].speed = 0
+                else:
+                    troops[troops.index(troop)+1].speed = 4
+
 def reload_screen():
     screen.fill(BG)
+    troop_controller(red_team)
+    troop_controller(blue_team)
     
-    for rt in red_team:
-        rt.draw()
-        rt.move()
-        if len(red_team)>1 and red_team.index(rt)+1 < len(red_team):
-            if rt.colision(red_team[red_team.index(rt)+1]):
-                red_team[red_team.index(rt)+1].speed = 0
-            else:
-                red_team[red_team.index(rt)+1].speed = 4
-
-    for bt in blue_team:
-        bt.draw()
-        bt.move()
-        if len(blue_team)>1 and blue_team.index(bt)+1 < len(blue_team):
-            if bt.colision(blue_team[blue_team.index(bt)+1]):
-                blue_team[blue_team.index(bt)+1].speed = 0
-            else:
-                blue_team[blue_team.index(bt)+1].speed = 4
-
     show_stats_player()
 
     pygame.draw.rect(screen,(255,0,0),(270,0,1,720)) #inicio de zona de juego
     pygame.draw.rect(screen,(255,0,0),(1030,0,1,720)) #limite de zona de juego
-    # pygame.draw.rect(screen,(0,0,255),(640,0,1,720)) #medio de zona de juego
+    # pygame.draw.rect(screen,(0,0,255),(640,0,1,720)) #medio de zona de juego    
     pygame.display.update()
 
 run = True
 intervalo = 1000
 intervalo2 = 1000
-intervalo3 = 1000
-player = Player(False, "red",25)
-player2 = Player(True, "blue",25)
+aux = 0
+alpha_value = 0
+#inicializacion de los jugadores
+player = Player(True, "red",25, 50) #(bool automatico,str team,int monedas,int vida)
+player2 = Player(True, "blue",25, 50)
+
 while run:
-    # if player.castle_hp <= 0 or player2.castle_hp <= 0:
+    if player.castle_hp <= 0 or player2.castle_hp <= 0:
+        for evento in pygame.event.get():
+            # evento de boton de cierre de ventana
+            if evento.type == pygame.QUIT:
+                run = False
+        game_over = True
     # Pausar el juego y mostrar pantalla de game over
-    for evento in pygame.event.get():
-        # evento de boton de cierre de ventana
-        if evento.type == pygame.QUIT:
-            run = False
-        #evento de tecla para invocar una tropa
-        if player.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo >= 1:
-            key = evento.key
-            player.summon_troop(key)
+        txt_game_over = font.render("GAME OVER",False,WHITE)
+        txt_winner = font.render(player2.color+" Team WON", False, BLUE)
+        bg_game_over = pygame.Surface((W,H))
+        if player.castle_hp > 0:
+            txt_winner = font.render(player.color+" Team WON", False, RED)
+        if alpha_value < 255:
+            bg_game_over.fill(BLACK)
+            bg_game_over.set_alpha(alpha_value)
+            alpha_value += 5
+            screen.blit(bg_game_over,(0,0))
+            if alpha_value > 50:
+                screen.blit(txt_game_over,(W/2-(txt_game_over.get_size()[0]/2),H/2-(txt_game_over.get_size()[1])))
+                screen.blit(txt_winner,(W/2-(txt_winner.get_size()[0]/2),H/2))
+        pygame.display.update()
+    else:
+        game_over = False
+        for evento in pygame.event.get():
+            # evento de boton de cierre de ventana
+            if evento.type == pygame.QUIT:
+                run = False
+            #evento de tecla para invocar una tropa
+            if player.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo >= 1:
+                key = evento.key
+                player.summon_troop(key)
+                intervalo += 1000
+
+            if player2.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo2 >= 1:
+                key = evento.key
+                player2.summon_troop(key)
+                intervalo2 += 1000
+                
+        #modo automatico que genera una tropa enemiga cada cierto tiempo
+        if player.automatico and pygame.time.get_ticks()/intervalo >= 1:
+            if len(red_team) < 2 or (len(blue_team) >= len(red_team) and len(red_team) < 6):
+                player.summon_troop("")
             intervalo += 1000
-
-        if player2.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo2 >= 1:
-            key = evento.key
-            player2.summon_troop(key)
+        if player2.automatico and pygame.time.get_ticks()/intervalo2 >= 1:
+            if len(blue_team) < 2 or (len(red_team) >= len(blue_team) and len(blue_team) < 6):
+                player2.summon_troop("")
             intervalo2 += 1000
-            
-    #modo automatico que genera una tropa enemiga cada cierto tiempo
-    if player.automatico and pygame.time.get_ticks()/intervalo >= 1:
-        if len(red_team) < 2 or (len(blue_team) >= len(red_team) and len(red_team) < 6):
-            player.summon_troop("")
-        intervalo += 1000
-    if player2.automatico and pygame.time.get_ticks()/intervalo2 >= 1:
-        if len(blue_team) < 2 or (len(red_team) >= len(blue_team) and len(blue_team) < 6):
-            player2.summon_troop("")
-        intervalo2 += 1000
-    
+        
 
-    if len(blue_team) > 0:
-        if blue_team[0].type == "dragon" and blue_team[0].x < 1030-124:
-            blue_team[0].speed = 4
-        else:
-            if blue_team[0].type != "dragon" and blue_team[0].x < 1030-62:
+        if len(blue_team) > 0:
+            if blue_team[0].type == "dragon" and blue_team[0].x < 1030-124:
                 blue_team[0].speed = 4
             else:
+                if blue_team[0].type != "dragon" and blue_team[0].x < 1030-62:
+                    blue_team[0].speed = 4
+                else:
+                    blue_team[0].speed = 0
+                    blue_team[0].drop = 0
+                    player.castle_hp -= blue_team[0].hp_base
+                    blue_team.remove(blue_team[0])
+        
+        if len(red_team) > 0:
+            if red_team[0].x > 269:
+                red_team[0].speed = 4
+            else:
+                red_team[0].speed = 0
+                red_team[0].drop = 0
+                player2.castle_hp -= red_team[0].hp_base
+                red_team.remove(red_team[0]) 
+
+        if len(blue_team) > 0 and len(red_team) > 0:
+            damage = calc_damage(red_team[0],blue_team[0])
+            if blue_team[0].colision(red_team[0]) and red_team[0].colision(blue_team[0]) and blue_team[0].hp > 0 and red_team[0].hp > 0:
+                blue_team[0].damage_taken = damage[1] #daño que hace red
+                red_team[0].damage_taken = damage[0] #daño que hace blue
                 blue_team[0].speed = 0
-                blue_team[0].drop = 0
-                blue_team[0].hp = 0
-                player.castle_hp -= blue_team[0].hp_base
-    
-    if len(red_team) > 0:
-        if red_team[0].x > 269:
-            red_team[0].speed = 4
-        else:
-            red_team[0].speed = 0
-            red_team[0].drop = 0
-            red_team[0].hp = 0
-            player2.castle_hp -= red_team[0].hp_base
-
-    if len(blue_team) > 0 and len(red_team) > 0:
-        damage = calc_damage(red_team[0],blue_team[0])
-        if blue_team[0].colision(red_team[0]) and red_team[0].colision(blue_team[0]):
-            blue_team[0].damage_taken = damage[1] #daño que hace red
-            red_team[0].damage_taken = damage[0] #daño que hace blue
-            blue_team[0].speed = 0
-            red_team[0].speed = 0
-            if pygame.time.get_ticks()/intervalo3 >= 1:
-                blue_team[0].attack()
-                red_team[0].attack()
-                intervalo3 += 1000
-        if blue_team[0].hp <= 0:
-            player.monedas += blue_team[0].drop
-            blue_team.remove(blue_team[0])
-        if red_team[0].hp <= 0:
-            player2.monedas += red_team[0].drop
-            red_team.remove(red_team[0])
-
-    reload_screen()
+                red_team[0].speed = 0
+                if aux == 0:
+                    aux = pygame.time.get_ticks()/1000
+                blue_team[0].is_attack = True
+                red_team[0].is_attack = True
+                if pygame.time.get_ticks()/1000 >= aux+3:
+                    blue_team[0].is_attack = False
+                    red_team[0].is_attack = False
+                    aux = 0
+            if blue_team[0].hp <= 0:
+                blue_team[0].is_death = True
+            if red_team[0].hp <= 0:
+                # player2.monedas += red_team[0].drop
+                red_team[0].is_death = True
+        reload_screen()
     clock.tick(fps)
 pygame.quit()
