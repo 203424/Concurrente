@@ -114,9 +114,7 @@ class Player(Thread):
 def main():
     monitor = Monitor()
     game = Game(monitor)
-    player = Player(monitor,True) #false para jugadores, true para la máquina
     game.start()
-    player.start()
-    
+
 if __name__ == "__main__":
     main()

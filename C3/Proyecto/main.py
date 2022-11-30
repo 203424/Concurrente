@@ -1,22 +1,48 @@
-import pygame
+import pygame,time
 from random import choice
+from threading import Thread
+
 pygame.init()
-#color
+#paleta de colores
 BG = (201,194,190)
 BLACK = (51,48,33)
 WHITE = (255,255,255)
 BLUE = (50,131,172)
 RED = (172,50,50)
+# variables para el juego
 W = 1280
 H = 720
 fps = 8
-# fps = 64
+
 screen = pygame.display.set_mode((W,H))
 pygame.display.set_caption("Tower Defense")
 
 font = pygame.font.Font("./assets/font/upheavtt.ttf",40)
 
 clock = pygame.time.Clock()
+
+red_team = []
+blue_team = []
+
+class Game(Thread):
+    def __init__(self,player1,player2):
+        Thread.__init__(self)
+        self.player1 = player1
+        self.player2 = player2
+
+    def give_coins(self):
+        if self.player1.monedas+2 <= 50:
+            self.player1.monedas += 2 
+        if self.player2.monedas+2 <= 50:
+            self.player2.monedas += 2 
+        print("give coins")
+
+    def state(self):
+        state = self.player1.castle_hp > 0 and self.player2.castle_hp > 0
+        return state
+        
+    def run(self):
+        self.give_coins()
 
 class Troop(object):
     def __init__(self,x,y,type_troop,team):
@@ -231,9 +257,6 @@ class Troop(object):
         if self.index == len(self.death_images)-1:
             return True
 
-red_team = []
-blue_team = []
-
 class Player():
     def __init__(self,auto,team,monedas, castle_hp):
         self.automatico = auto
@@ -336,22 +359,25 @@ def reload_screen():
     # pygame.draw.rect(screen,(0,0,255),(640,0,1,720)) #medio de zona de juego    
     pygame.display.update()
 
-run = True
+# run = True
 intervalo = 1000
 intervalo2 = 1000
+intervalo3 = 1000
 aux = 0
 alpha_value = 0
 #inicializacion de los jugadores
 player = Player(True, "red",25, 50) #(bool automatico,str team,int monedas,int vida)
 player2 = Player(True, "blue",25, 50)
+#inicializacion de los hilos
+game = Game(player,player2)
+game.start()
 
-while run:
+while game.state():
     if player.castle_hp <= 0 or player2.castle_hp <= 0:
         for evento in pygame.event.get():
             # evento de boton de cierre de ventana
             if evento.type == pygame.QUIT:
-                run = False
-        game_over = True
+                pygame.quit()
     # Pausar el juego y mostrar pantalla de game over
         txt_game_over = font.render("GAME OVER",False,WHITE)
         txt_winner = font.render(player2.color+" Team WON", False, BLUE)
@@ -368,11 +394,13 @@ while run:
                 screen.blit(txt_winner,(W/2-(txt_winner.get_size()[0]/2),H/2))
         pygame.display.update()
     else:
-        game_over = False
+        if pygame.time.get_ticks()/intervalo3 >= 2:
+            game.give_coins()
+            intervalo3 += 1000
         for evento in pygame.event.get():
             # evento de boton de cierre de ventana
             if evento.type == pygame.QUIT:
-                run = False
+                pygame.quit()
             #evento de tecla para invocar una tropa
             if player.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo >= 1:
                 key = evento.key
@@ -394,7 +422,6 @@ while run:
                 player2.summon_troop("")
             intervalo2 += 1000
         
-
         if len(blue_team) > 0:
             if blue_team[0].type == "dragon" and blue_team[0].x < 1030-124:
                 blue_team[0].speed = 4
@@ -434,8 +461,6 @@ while run:
             if blue_team[0].hp <= 0:
                 blue_team[0].is_death = True
             if red_team[0].hp <= 0:
-                # player2.monedas += red_team[0].drop
                 red_team[0].is_death = True
         reload_screen()
     clock.tick(fps)
-pygame.quit()
