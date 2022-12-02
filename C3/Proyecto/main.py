@@ -1,4 +1,4 @@
-import pygame,time
+import pygame
 from random import choice
 from threading import Thread
 
@@ -36,11 +36,7 @@ class Game(Thread):
         if self.player2.monedas+2 <= 50:
             self.player2.monedas += 2 
         print("give coins")
-
-    def state(self):
-        state = self.player1.castle_hp > 0 and self.player2.castle_hp > 0
-        return state
-        
+    
     def run(self):
         self.give_coins()
 
@@ -104,7 +100,7 @@ class Troop(object):
                 pygame.transform.flip(pygame.transform.scale(pygame.image.load(self.ruta+self.type+'/'+self.team+'/knight_death5.png'),(self.width,self.height)),True,False),
             ]
         if self.type == "lancer":
-            self.hp_base = 15
+            self.hp_base = 12
             self.cost = 5
             self.damage = 3
             self.drop = 8
@@ -128,10 +124,10 @@ class Troop(object):
         if self.type == "dragon":
             self.width = 128
             self.height = 128
-            self.hp_base = 50
-            self.cost = 50
+            self.hp_base = 30
+            self.cost = 40
             self.damage = 12
-            self.drop = 50
+            self.drop = 40
             self.idle_images = [
                 pygame.transform.scale(pygame.image.load(self.ruta+self.type+'/'+self.team+'/dragon_idle1.png'),(self.width,self.height)),
                 pygame.transform.scale(pygame.image.load(self.ruta+self.type+'/'+self.team+'/dragon_idle2.png'),(self.width,self.height)),
@@ -275,7 +271,7 @@ class Player():
         pos_y = 354
         if self.automatico:
             key = choice(self.controles)
-            if self.monedas >= 50 and choice([True,False]):
+            if self.monedas >= 40 and choice([True,False]):
                 key = self.controles[3] #escoger dragon
             else:
                 key = choice(self.controles[0:4]) #escoge cualquiera menos dragon
@@ -307,22 +303,19 @@ def calc_damage(any_red, any_blue):
     return damage
 
 def show_stats_player():
-    monedas_red = str(player.monedas) + " coins"
-    monedas_blue = str(player2.monedas) + " coins"
-
-    hp_castle_red = str(player.castle_hp) + " hp"
-    hp_castle_blue = str(player2.castle_hp) + " hp"
+    monedas_red = str(player_red.monedas) + " coins"
+    hp_castle_red = str(player_red.castle_hp) + " hp"
+    monedas_blue = str(player_blue.monedas) + " coins"
+    hp_castle_blue = str(player_blue.castle_hp) + " hp"
 
     txt_monedas_r = font.render(monedas_red,False,BLACK)
-    txt_monedas_b = font.render(monedas_blue,False,BLACK)
-
     txt_hp_castle_r = font.render(hp_castle_red,False,BLACK)
+    txt_monedas_b = font.render(monedas_blue,False,BLACK)
     txt_hp_castle_b = font.render(hp_castle_blue,False,BLACK)
 
     screen.blit(txt_monedas_r,(980,10))
-    screen.blit(txt_monedas_b,(270,10))
-
     screen.blit(txt_hp_castle_r,(980,50))
+    screen.blit(txt_monedas_b,(270,10))
     screen.blit(txt_hp_castle_b,(270,50))
 
 def troop_controller(troops):
@@ -330,9 +323,9 @@ def troop_controller(troops):
         if troop.is_death:
             if troop.death():
                 if troop.team == "red":
-                    player.monedas += troop.drop
+                    player_blue.monedas += troop.drop
                 else:
-                    player2.monedas += troop.drop
+                    player_red.monedas += troop.drop
                 troops.remove(troop)
         else:
             if troop.speed != 0:
@@ -359,67 +352,67 @@ def reload_screen():
     # pygame.draw.rect(screen,(0,0,255),(640,0,1,720)) #medio de zona de juego    
     pygame.display.update()
 
-# run = True
+run = True
 intervalo = 1000
 intervalo2 = 1000
 intervalo3 = 1000
 aux = 0
 alpha_value = 0
 #inicializacion de los jugadores
-player = Player(True, "red",25, 50) #(bool automatico,str team,int monedas,int vida)
-player2 = Player(True, "blue",25, 50)
+player_red = Player(True, "red",25, 50) #(bool automatico,str team,int monedas,int vida)
+player_blue = Player(True, "blue",25, 50)
 #inicializacion de los hilos
-game = Game(player,player2)
+game = Game(player_red,player_blue)
 game.start()
 
-while game.state():
-    if player.castle_hp <= 0 or player2.castle_hp <= 0:
+while run:
+    if player_red.castle_hp <= 0 or player_blue.castle_hp <= 0:
         for evento in pygame.event.get():
             # evento de boton de cierre de ventana
             if evento.type == pygame.QUIT:
-                pygame.quit()
+                run = False
     # Pausar el juego y mostrar pantalla de game over
         txt_game_over = font.render("GAME OVER",False,WHITE)
-        txt_winner = font.render(player2.color+" Team WON", False, BLUE)
+        txt_winner = font.render(player_blue.color+" Team WON", False, BLUE)
         bg_game_over = pygame.Surface((W,H))
-        if player.castle_hp > 0:
-            txt_winner = font.render(player.color+" Team WON", False, RED)
+        if player_red.castle_hp > 0:
+            txt_winner = font.render(player_red.color+" Team WON", False, RED)
         if alpha_value < 255:
             bg_game_over.fill(BLACK)
             bg_game_over.set_alpha(alpha_value)
-            alpha_value += 5
             screen.blit(bg_game_over,(0,0))
+            alpha_value += 5
             if alpha_value > 50:
                 screen.blit(txt_game_over,(W/2-(txt_game_over.get_size()[0]/2),H/2-(txt_game_over.get_size()[1])))
                 screen.blit(txt_winner,(W/2-(txt_winner.get_size()[0]/2),H/2))
         pygame.display.update()
     else:
         if pygame.time.get_ticks()/intervalo3 >= 2:
-            game.give_coins()
+            # game.give_coins()
             intervalo3 += 1000
         for evento in pygame.event.get():
             # evento de boton de cierre de ventana
             if evento.type == pygame.QUIT:
-                pygame.quit()
+                run = False
             #evento de tecla para invocar una tropa
-            if player.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo >= 1:
+            if player_red.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo >= 1:
                 key = evento.key
-                player.summon_troop(key)
+                player_red.summon_troop(key)
                 intervalo += 1000
 
-            if player2.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo2 >= 1:
+            if player_blue.automatico == False and evento.type == pygame.KEYDOWN and pygame.time.get_ticks()/intervalo2 >= 1:
                 key = evento.key
-                player2.summon_troop(key)
+                player_blue.summon_troop(key)
                 intervalo2 += 1000
                 
         #modo automatico que genera una tropa enemiga cada cierto tiempo
-        if player.automatico and pygame.time.get_ticks()/intervalo >= 1:
+        if player_red.automatico and pygame.time.get_ticks()/intervalo >= 1:
             if len(red_team) < 2 or (len(blue_team) >= len(red_team) and len(red_team) < 6):
-                player.summon_troop("")
+                player_red.summon_troop("")
             intervalo += 1000
-        if player2.automatico and pygame.time.get_ticks()/intervalo2 >= 1:
+        if player_blue.automatico and pygame.time.get_ticks()/intervalo2 >= 1:
             if len(blue_team) < 2 or (len(red_team) >= len(blue_team) and len(blue_team) < 6):
-                player2.summon_troop("")
+                player_blue.summon_troop("")
             intervalo2 += 1000
         
         if len(blue_team) > 0:
@@ -431,7 +424,7 @@ while game.state():
                 else:
                     blue_team[0].speed = 0
                     blue_team[0].drop = 0
-                    player.castle_hp -= blue_team[0].hp_base
+                    player_red.castle_hp -= blue_team[0].hp_base
                     blue_team.remove(blue_team[0])
         
         if len(red_team) > 0:
@@ -440,7 +433,7 @@ while game.state():
             else:
                 red_team[0].speed = 0
                 red_team[0].drop = 0
-                player2.castle_hp -= red_team[0].hp_base
+                player_blue.castle_hp -= red_team[0].hp_base
                 red_team.remove(red_team[0]) 
 
         if len(blue_team) > 0 and len(red_team) > 0:
@@ -464,3 +457,4 @@ while game.state():
                 red_team[0].is_death = True
         reload_screen()
     clock.tick(fps)
+pygame.quit()
