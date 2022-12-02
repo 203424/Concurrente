@@ -388,7 +388,7 @@ while run:
         pygame.display.update()
     else:
         if pygame.time.get_ticks()/intervalo3 >= 2:
-            # game.give_coins()
+            game.give_coins()
             intervalo3 += 1000
         for evento in pygame.event.get():
             # evento de boton de cierre de ventana
